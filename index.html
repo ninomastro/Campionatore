@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Campionatore</title>
+    <meta name="description" content="Campionatore da studio nel browser: pad grid, editor waveform e kit offline-first." />
+
+    <meta name="theme-color" content="#16171A" />
+    <meta name="background-color" content="#16171A" />
+    <link rel="manifest" href="manifest.json" />
+
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Campionatore" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="app">
+        <header class="app-header">
+          <span class="app-header__kit">Kit 01 — Kicks</span>
+          <span class="app-header__status" id="status-indicator" data-state="idle">● REC</span>
+        </header>
+
+        <main class="pad-grid" id="pad-grid" role="grid" aria-label="Griglia pad"></main>
+
+        <nav class="drawer-tabs" aria-label="Pannello di modifica">
+          <button class="drawer-tabs__tab" data-tab="edit" aria-selected="true">Edit</button>
+          <button class="drawer-tabs__tab" data-tab="mix" aria-selected="false">Mix</button>
+          <button class="drawer-tabs__tab" data-tab="fx" aria-selected="false">FX</button>
+          <button class="drawer-tabs__handle" id="drawer-handle" aria-expanded="false" aria-controls="drawer" aria-label="Espandi pannello">▲</button>
+        </nav>
+
+        <section class="drawer" id="drawer" hidden>
+          <p>Editor, mixer ed effetti arrivano nei prossimi step.</p>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,223 @@
+:root {
+  --color-base: #16171a;
+  --color-surface: #1f2126;
+  --color-surface-raised: #262931;
+  --color-border: #33363e;
+  --color-text: #edeae3;
+  --color-text-muted: #9a978f;
+  --color-amber: #e8a33d;
+  --color-teal: #4fa8a0;
+  --color-red: #d0453b;
+
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-base);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+}
+
+/* ---------- App shell ---------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.app-header__kit {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.app-header__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.app-header__status[data-state='recording'] {
+  color: var(--color-red);
+}
+
+.app-header__status[data-state='playing'] {
+  color: var(--color-teal);
+}
+
+/* ---------- Pad grid ---------- */
+
+.pad-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-border);
+  min-height: 0;
+}
+
+.pad {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 80ms ease-out;
+}
+
+.pad:active {
+  background: var(--color-surface-raised);
+}
+
+.pad__label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.pad[data-loaded='true'] .pad__label {
+  color: var(--color-text);
+}
+
+/* Elemento firma: impulso ad anello tipo VU meter al trigger del pad. */
+.pad::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-amber);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pad:active::after {
+  animation: pad-ring-pulse 260ms ease-out;
+}
+
+@keyframes pad-ring-pulse {
+  0% {
+    opacity: 0.9;
+    inset: 10px;
+  }
+  100% {
+    opacity: 0;
+    inset: 0px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pad:active::after {
+    animation: none;
+    opacity: 0.6;
+    transition: opacity 120ms ease-out;
+  }
+}
+
+/* ---------- Drawer tabs ---------- */
+
+.drawer-tabs {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.drawer-tabs__tab {
+  flex: 1;
+  padding: var(--space-3) var(--space-2);
+  background: transparent;
+  border: none;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.drawer-tabs__tab[aria-selected='true'] {
+  color: var(--color-amber);
+}
+
+.drawer-tabs__handle {
+  width: 48px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.drawer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: var(--space-4);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.drawer[hidden] {
+  display: none;
+}
