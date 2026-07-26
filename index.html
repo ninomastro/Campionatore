@@ -50,6 +50,19 @@
             <input type="file" id="file-input" accept="audio/*" hidden />
 
             <div class="drawer__section">
+              <span class="drawer__section-label">Trim</span>
+              <canvas class="drawer__waveform" id="edit-waveform"></canvas>
+              <div class="drawer__sliders drawer__sliders--stacked">
+                <label class="drawer__slider drawer__slider--wide">Start<input type="range" id="trim-start" min="0" max="1" step="0.001" /></label>
+                <label class="drawer__slider drawer__slider--wide">End<input type="range" id="trim-end" min="0" max="1" step="0.001" /></label>
+              </div>
+              <div class="drawer__row">
+                <button type="button" class="btn btn--toggle" id="rev-button">Rev: Off</button>
+                <button type="button" class="btn btn--toggle" id="norm-button">Norm: Off</button>
+              </div>
+            </div>
+
+            <div class="drawer__section">
               <div class="drawer__row">
                 <button type="button" class="btn btn--toggle" id="mode-button">Mode: One</button>
                 <button type="button" class="btn btn--toggle" id="choke-button">Choke: Off</button>

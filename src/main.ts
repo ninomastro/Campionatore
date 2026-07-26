@@ -8,7 +8,16 @@ import '../styles/main.css';
 import { renderPadGrid } from './ui/pad-grid.ts';
 import { setupDrawer, isPadSelectionTab } from './ui/drawer.ts';
 import { createEditPanel } from './ui/edit-panel.ts';
-import { DEFAULT_ADSR, decodeBlob, loadSample, playVoice, resumeAudioContext, reverseBuffer, type Voice } from './audio/engine.ts';
+import {
+  audioNow,
+  DEFAULT_ADSR,
+  decodeBlob,
+  loadSample,
+  playVoice,
+  resumeAudioContext,
+  reverseBuffer,
+  type Voice,
+} from './audio/engine.ts';
 import {
   getAllPadAssignments,
   getAllPadSettings,
@@ -154,6 +163,11 @@ const editPanel = createEditPanel(app, {
   pads,
   statusIndicator,
   getBuffer: (padIndex) => padBuffers.get(padIndex),
+  getDisplayBuffer: (padIndex) => {
+    const buffer = padBuffers.get(padIndex);
+    if (!buffer) return undefined;
+    return getEffectiveBuffer(padIndex, buffer, getPadSettings(padIndex));
+  },
   getSettings: getPadSettings,
   updateSettings: updatePadSettings,
   onSampleReady: (padIndex, buffer) => {
@@ -162,7 +176,26 @@ const editPanel = createEditPanel(app, {
     normalizeGainCache.delete(padIndex);
     markPadLoaded(padIndex);
   },
-  onPreview: (padIndex) => triggerPad(padIndex, 1),
+  onPreview: (padIndex) => {
+    const buffer = padBuffers.get(padIndex);
+    if (!buffer) return undefined;
+    const settings = getPadSettings(padIndex);
+    const willStop = settings.mode === 'loop' && activeVoicesByPad.has(padIndex);
+
+    if (willStop) {
+      triggerPad(padIndex, 1);
+      return undefined;
+    }
+
+    const effectiveBuffer = getEffectiveBuffer(padIndex, buffer, settings);
+    const trimStart = settings.trimStart * effectiveBuffer.duration;
+    const trimEnd = settings.trimEnd * effectiveBuffer.duration;
+    const regionDuration = Math.max(0.005, trimEnd - trimStart);
+    const playbackRate = Math.pow(2, settings.pitch / 12);
+    const startTime = audioNow();
+    triggerPad(padIndex, 1);
+    return { startTime, duration: regionDuration / playbackRate, loop: settings.mode === 'loop' };
+  },
   onCleared: (padIndex) => {
     stopVoice(padIndex);
     padBuffers.delete(padIndex);

@@ -1,4 +1,4 @@
-import { createMicAnalyser, decodeBlob, resumeAudioContext } from '../audio/engine.ts';
+import { audioNow, createMicAnalyser, decodeBlob, resumeAudioContext } from '../audio/engine.ts';
 import { requestMicStream, startRecording, type ActiveRecording } from '../audio/recorder.ts';
 import {
   assignPadSample,
@@ -10,15 +10,23 @@ import {
   type PadSettingsRecord,
   type PlaybackMode,
 } from '../storage/db.ts';
+import { drawPlayhead, drawWaveform } from './waveform.ts';
+
+export interface PreviewTiming {
+  startTime: number;
+  duration: number;
+  loop: boolean;
+}
 
 export interface EditPanelOptions {
   pads: HTMLButtonElement[];
   statusIndicator: HTMLElement;
   getBuffer: (padIndex: number) => AudioBuffer | undefined;
+  getDisplayBuffer: (padIndex: number) => AudioBuffer | undefined;
   getSettings: (padIndex: number) => PadSettingsRecord;
   updateSettings: (padIndex: number, patch: Partial<Omit<PadSettingsRecord, 'padIndex'>>) => void;
   onSampleReady: (padIndex: number, buffer: AudioBuffer) => void;
-  onPreview: (padIndex: number) => void;
+  onPreview: (padIndex: number) => PreviewTiming | undefined;
   onCleared: (padIndex: number) => void;
   onKitReset: () => void;
 }
@@ -54,8 +62,18 @@ function describeMicError(error: unknown): string {
 }
 
 export function createEditPanel(root: HTMLElement, options: EditPanelOptions): EditPanel {
-  const { pads, statusIndicator, getBuffer, getSettings, updateSettings, onSampleReady, onPreview, onCleared, onKitReset } =
-    options;
+  const {
+    pads,
+    statusIndicator,
+    getBuffer,
+    getDisplayBuffer,
+    getSettings,
+    updateSettings,
+    onSampleReady,
+    onPreview,
+    onCleared,
+    onKitReset,
+  } = options;
 
   const padTarget = root.querySelector<HTMLElement>('#edit-pad-target')!;
   const sampleNameLabel = root.querySelector<HTMLElement>('#edit-sample-name')!;
@@ -77,11 +95,52 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
   const mixPadTarget = root.querySelector<HTMLElement>('#mix-pad-target')!;
   const mixVolume = root.querySelector<HTMLInputElement>('#mix-volume')!;
   const mixPitch = root.querySelector<HTMLInputElement>('#mix-pitch')!;
+  const waveformCanvas = root.querySelector<HTMLCanvasElement>('#edit-waveform')!;
+  const trimStartInput = root.querySelector<HTMLInputElement>('#trim-start')!;
+  const trimEndInput = root.querySelector<HTMLInputElement>('#trim-end')!;
+  const revButton = root.querySelector<HTMLButtonElement>('#rev-button')!;
+  const normButton = root.querySelector<HTMLButtonElement>('#norm-button')!;
 
   const padNames = new Map<number, string>();
   let selectedPad = 0;
   let activeRecording: ActiveRecording | null = null;
   let meterFrame: number | null = null;
+  let scanlineFrame: number | null = null;
+
+  function stopScanline() {
+    if (scanlineFrame !== null) {
+      cancelAnimationFrame(scanlineFrame);
+      scanlineFrame = null;
+    }
+    renderWaveform();
+  }
+
+  function startScanline(padIndex: number, timing: PreviewTiming) {
+    stopScanline();
+    const settings = getSettings(padIndex);
+    const tick = () => {
+      const elapsed = audioNow() - timing.startTime;
+      let progress = timing.duration > 0 ? elapsed / timing.duration : 1;
+      if (timing.loop) {
+        progress = progress % 1;
+      } else if (progress >= 1) {
+        stopScanline();
+        return;
+      }
+      renderWaveform();
+      drawPlayhead(waveformCanvas, settings.trimStart + progress * (settings.trimEnd - settings.trimStart));
+      scanlineFrame = requestAnimationFrame(tick);
+    };
+    scanlineFrame = requestAnimationFrame(tick);
+  }
+
+  function renderWaveform() {
+    const settings = getSettings(selectedPad);
+    drawWaveform(waveformCanvas, getDisplayBuffer(selectedPad), {
+      trimStart: settings.trimStart,
+      trimEnd: settings.trimEnd,
+    });
+  }
 
   function render() {
     pads.forEach((pad, index) => {
@@ -105,6 +164,12 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
     adsrRelease.value = String(settings.adsr.release);
     mixVolume.value = String(settings.volume);
     mixPitch.value = String(settings.pitch);
+    trimStartInput.value = String(settings.trimStart);
+    trimEndInput.value = String(settings.trimEnd);
+    revButton.textContent = `Rev: ${settings.reversed ? 'On' : 'Off'}`;
+    normButton.textContent = `Norm: ${settings.normalized ? 'On' : 'Off'}`;
+
+    renderWaveform();
   }
 
   function setStatus(message: string, tone: 'error' | 'info' | 'idle' = 'idle') {
@@ -166,7 +231,9 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
   previewButton.addEventListener('click', () => {
     if (!getBuffer(selectedPad)) return;
     resumeAudioContext();
-    onPreview(selectedPad);
+    stopScanline();
+    const timing = onPreview(selectedPad);
+    if (timing) startScanline(selectedPad, timing);
   });
 
   modeButton.addEventListener('click', () => {
@@ -201,6 +268,34 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
   });
   mixPitch.addEventListener('input', () => {
     updateSettings(selectedPad, { pitch: Number(mixPitch.value) });
+  });
+
+  trimStartInput.addEventListener('input', () => {
+    const end = getSettings(selectedPad).trimEnd;
+    const start = Math.min(Number(trimStartInput.value), Math.max(0, end - 0.01));
+    trimStartInput.value = String(start);
+    updateSettings(selectedPad, { trimStart: start });
+    renderWaveform();
+  });
+
+  trimEndInput.addEventListener('input', () => {
+    const start = getSettings(selectedPad).trimStart;
+    const end = Math.max(Number(trimEndInput.value), Math.min(1, start + 0.01));
+    trimEndInput.value = String(end);
+    updateSettings(selectedPad, { trimEnd: end });
+    renderWaveform();
+  });
+
+  revButton.addEventListener('click', () => {
+    const next = !getSettings(selectedPad).reversed;
+    updateSettings(selectedPad, { reversed: next });
+    render();
+  });
+
+  normButton.addEventListener('click', () => {
+    const next = !getSettings(selectedPad).normalized;
+    updateSettings(selectedPad, { normalized: next });
+    render();
   });
 
   clearPadButton.addEventListener('click', () => {
@@ -285,12 +380,17 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
       });
   });
 
+  // Ridisegna la waveform quando il canvas cambia dimensione (es. apertura del drawer,
+  // che porta il canvas da display:none a una larghezza reale).
+  new ResizeObserver(() => renderWaveform()).observe(waveformCanvas);
+
   render();
 
   return {
     selectPad(index: number) {
       selectedPad = index;
       setStatus('', 'idle');
+      stopScanline();
       render();
     },
     setSampleName(padIndex: number, name: string) {
