@@ -126,7 +126,7 @@ button {
 }
 
 .pad:active {
-  background: var(--color-surface-raised);
+  background: var(--color-border);
 }
 
 .pad__label {
@@ -135,8 +135,20 @@ button {
   color: var(--color-text-muted);
 }
 
+.pad[data-loaded='true'] {
+  background: var(--color-surface-raised);
+}
+
 .pad[data-loaded='true'] .pad__label {
-  color: var(--color-text);
+  color: var(--color-teal);
+}
+
+.pad[data-loaded='true']:active {
+  background: var(--color-border);
+}
+
+.pad[data-selected='true'] {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
 }
 
 /* Elemento firma: impulso ad anello tipo VU meter al trigger del pad. */
@@ -220,4 +232,100 @@ button {
 
 .drawer[hidden] {
   display: none;
+}
+
+.drawer__panel[hidden] {
+  display: none;
+}
+
+.drawer__hint {
+  margin: 0 0 var(--space-3);
+}
+
+.drawer__pad-target {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.drawer__sample-name {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  margin: var(--space-1) 0 var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.drawer__meter {
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  margin: 0 0 var(--space-3);
+}
+
+.drawer__meter[hidden] {
+  display: none;
+}
+
+.drawer__meter-fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--color-amber);
+  transition: transform 60ms linear;
+}
+
+.drawer__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.drawer__status {
+  min-height: 1.2em;
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.drawer__status[data-tone='error'] {
+  color: var(--color-red);
+}
+
+.drawer__status[data-tone='info'] {
+  color: var(--color-teal);
+}
+
+.btn {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.btn:active {
+  background: var(--color-border);
+}
+
+.btn:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn--record[data-recording='true'] {
+  background: var(--color-red);
+  border-color: var(--color-red);
+  color: var(--color-text);
 }

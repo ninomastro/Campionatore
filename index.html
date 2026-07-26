@@ -34,7 +34,27 @@
         </nav>
 
         <section class="drawer" id="drawer" hidden>
-          <p>Editor, mixer ed effetti arrivano nei prossimi step.</p>
+          <div class="drawer__panel" data-panel="edit">
+            <p class="drawer__hint">Tocca un pad per selezionarlo, poi carica un file o registra dal microfono.</p>
+            <div class="drawer__pad-target" id="edit-pad-target">Pad 01</div>
+            <div class="drawer__sample-name" id="edit-sample-name">Vuoto</div>
+            <div class="drawer__meter" id="edit-meter" hidden>
+              <div class="drawer__meter-fill" id="edit-meter-fill"></div>
+            </div>
+            <div class="drawer__actions">
+              <button type="button" class="btn" id="load-button">Load</button>
+              <button type="button" class="btn btn--record" id="record-button">Rec</button>
+              <button type="button" class="btn" id="preview-button" disabled>▶ Preview</button>
+            </div>
+            <p class="drawer__status" id="edit-status" role="status"></p>
+            <input type="file" id="file-input" accept="audio/*" hidden />
+          </div>
+          <div class="drawer__panel" data-panel="mix" hidden>
+            <p>Mixer disponibile in un prossimo step.</p>
+          </div>
+          <div class="drawer__panel" data-panel="fx" hidden>
+            <p>Effetti disponibili in un prossimo step.</p>
+          </div>
         </section>
       </div>
     </div>

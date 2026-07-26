@@ -15,11 +15,25 @@ export function resumeAudioContext(): void {
   }
 }
 
-export async function loadSample(url: string): Promise<AudioBuffer> {
+export async function decodeBlob(blob: Blob): Promise<AudioBuffer> {
   const ctx = getAudioContext();
-  const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
+  const arrayBuffer = await blob.arrayBuffer();
   return ctx.decodeAudioData(arrayBuffer);
+}
+
+export async function loadSample(url: string): Promise<AudioBuffer> {
+  const response = await fetch(url);
+  return decodeBlob(await response.blob());
+}
+
+/** Analyser non connesso a destination: legge il livello del microfono senza generare feedback in cassa. */
+export function createMicAnalyser(stream: MediaStream): AnalyserNode {
+  const ctx = getAudioContext();
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  source.connect(analyser);
+  return analyser;
 }
 
 export function triggerSample(buffer: AudioBuffer, { gain = 1 } = {}): void {
