@@ -8,6 +8,9 @@
   --color-amber: #e8a33d;
   --color-teal: #4fa8a0;
   --color-red: #d0453b;
+  /* Variante più chiara di --color-red: usata ovunque il rosso sia testo (o sfondo con testo sopra),
+     perché #d0453b non raggiunge il contrasto AA 4.5:1 in nessuna delle due direzioni. */
+  --color-red-text: #e97267;
 
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -92,7 +95,7 @@ button {
 }
 
 .app-header__status[data-state='recording'] {
-  color: var(--color-red);
+  color: var(--color-red-text);
 }
 
 .app-header__status[data-state='playing'] {
@@ -109,7 +112,7 @@ button {
   gap: 2px;
   padding: 2px;
   background: var(--color-border);
-  min-height: 0;
+  min-height: 220px;
 }
 
 .pad {
@@ -183,6 +186,10 @@ button {
     opacity: 0.6;
     transition: opacity 120ms ease-out;
   }
+
+  .drawer__meter-fill {
+    transition: none;
+  }
 }
 
 /* ---------- Drawer tabs ---------- */
@@ -228,6 +235,9 @@ button {
   font-family: var(--font-body);
   font-size: 0.875rem;
   color: var(--color-text-muted);
+  max-height: 42vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .drawer[hidden] {
@@ -302,7 +312,7 @@ button {
 }
 
 .drawer__status[data-tone='error'] {
-  color: var(--color-red);
+  color: var(--color-red-text);
 }
 
 .drawer__status[data-tone='info'] {
@@ -327,14 +337,22 @@ button {
   background: var(--color-border);
 }
 
+.btn--toggle {
+  background: transparent;
+}
+
+.btn--toggle:active {
+  background: var(--color-surface-raised);
+}
+
 .btn--danger {
-  border-color: var(--color-red);
-  color: var(--color-red);
+  border-color: var(--color-red-text);
+  color: var(--color-red-text);
 }
 
 .btn--danger:active {
-  background: var(--color-red);
-  color: var(--color-text);
+  background: var(--color-red-text);
+  color: var(--color-base);
 }
 
 .drawer__section {
@@ -403,7 +421,7 @@ input[type='range'] {
 }
 
 .btn--record[data-recording='true'] {
-  background: var(--color-red);
-  border-color: var(--color-red);
-  color: var(--color-text);
+  background: var(--color-red-text);
+  border-color: var(--color-red-text);
+  color: var(--color-base);
 }

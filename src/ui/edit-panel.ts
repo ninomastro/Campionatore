@@ -117,6 +117,7 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
 
   function startScanline(padIndex: number, timing: PreviewTiming) {
     stopScanline();
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const settings = getSettings(padIndex);
     const tick = () => {
       const elapsed = audioNow() - timing.startTime;
