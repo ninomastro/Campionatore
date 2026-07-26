@@ -33,7 +33,15 @@ export function isDrawerOpen(root: HTMLElement): boolean {
   return !!drawer && !drawer.hidden;
 }
 
-export function isEditTabActive(root: HTMLElement): boolean {
+/** Tab del drawer attualmente selezionata (indipendentemente dal fatto che il drawer sia aperto). */
+export function getActiveTab(root: HTMLElement): string | undefined {
   const activeTab = root.querySelector<HTMLButtonElement>('.drawer-tabs__tab[aria-selected="true"]');
-  return activeTab?.dataset.tab === 'edit';
+  return activeTab?.dataset.tab;
+}
+
+/** Vero quando il drawer è aperto su una tab che "possiede" il pad (Edit o Mix): il tap seleziona invece di suonare. */
+export function isPadSelectionTab(root: HTMLElement): boolean {
+  if (!isDrawerOpen(root)) return false;
+  const tab = getActiveTab(root);
+  return tab === 'edit' || tab === 'mix';
 }

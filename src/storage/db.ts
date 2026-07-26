@@ -1,7 +1,10 @@
+import type { AdsrSettings } from '../audio/engine.ts';
+
 const DB_NAME = 'campionatore';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const SAMPLES_STORE = 'samples';
 const PAD_ASSIGNMENTS_STORE = 'padAssignments';
+const PAD_SETTINGS_STORE = 'padSettings';
 
 export interface SampleRecord {
   id: string;
@@ -15,6 +18,21 @@ export interface PadAssignment {
   sampleId: string;
 }
 
+export type PlaybackMode = 'oneshot' | 'gate' | 'loop';
+
+export interface PadSettingsRecord {
+  padIndex: number;
+  mode: PlaybackMode;
+  chokeGroup: number | null;
+  adsr: AdsrSettings;
+  volume: number;
+  pitch: number;
+  trimStart: number;
+  trimEnd: number;
+  reversed: boolean;
+  normalized: boolean;
+}
+
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -25,6 +43,9 @@ function openDatabase(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(PAD_ASSIGNMENTS_STORE)) {
         db.createObjectStore(PAD_ASSIGNMENTS_STORE, { keyPath: 'padIndex' });
+      }
+      if (!db.objectStoreNames.contains(PAD_SETTINGS_STORE)) {
+        db.createObjectStore(PAD_SETTINGS_STORE, { keyPath: 'padIndex' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -67,12 +88,38 @@ export function getAllSamples(): Promise<SampleRecord[]> {
   return runRequest(SAMPLES_STORE, 'readonly', (store) => store.getAll());
 }
 
+export function clearAllSamples(): Promise<void> {
+  return runRequest<undefined>(SAMPLES_STORE, 'readwrite', (store) => store.clear()).then(() => undefined);
+}
+
 export function assignPadSample(padIndex: number, sampleId: string): Promise<void> {
   return runRequest(PAD_ASSIGNMENTS_STORE, 'readwrite', (store) => store.put({ padIndex, sampleId })).then(
     () => undefined
   );
 }
 
+export function clearPadAssignment(padIndex: number): Promise<void> {
+  return runRequest<undefined>(PAD_ASSIGNMENTS_STORE, 'readwrite', (store) => store.delete(padIndex)).then(
+    () => undefined
+  );
+}
+
 export function getAllPadAssignments(): Promise<PadAssignment[]> {
   return runRequest(PAD_ASSIGNMENTS_STORE, 'readonly', (store) => store.getAll());
+}
+
+export function clearAllPadAssignments(): Promise<void> {
+  return runRequest<undefined>(PAD_ASSIGNMENTS_STORE, 'readwrite', (store) => store.clear()).then(() => undefined);
+}
+
+export function savePadSettings(record: PadSettingsRecord): Promise<void> {
+  return runRequest(PAD_SETTINGS_STORE, 'readwrite', (store) => store.put(record)).then(() => undefined);
+}
+
+export function getAllPadSettings(): Promise<PadSettingsRecord[]> {
+  return runRequest(PAD_SETTINGS_STORE, 'readonly', (store) => store.getAll());
+}
+
+export function clearAllPadSettings(): Promise<void> {
+  return runRequest<undefined>(PAD_SETTINGS_STORE, 'readwrite', (store) => store.clear()).then(() => undefined);
 }

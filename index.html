@@ -48,9 +48,38 @@
             </div>
             <p class="drawer__status" id="edit-status" role="status"></p>
             <input type="file" id="file-input" accept="audio/*" hidden />
+
+            <div class="drawer__section">
+              <div class="drawer__row">
+                <button type="button" class="btn btn--toggle" id="mode-button">Mode: One</button>
+                <button type="button" class="btn btn--toggle" id="choke-button">Choke: Off</button>
+              </div>
+            </div>
+
+            <div class="drawer__section">
+              <span class="drawer__section-label">A/D/S/R</span>
+              <div class="drawer__sliders">
+                <label class="drawer__slider">A<input type="range" id="adsr-attack" min="0" max="0.5" step="0.005" /></label>
+                <label class="drawer__slider">D<input type="range" id="adsr-decay" min="0" max="1" step="0.01" /></label>
+                <label class="drawer__slider">S<input type="range" id="adsr-sustain" min="0" max="1" step="0.01" /></label>
+                <label class="drawer__slider">R<input type="range" id="adsr-release" min="0" max="1" step="0.01" /></label>
+              </div>
+            </div>
+
+            <div class="drawer__section">
+              <div class="drawer__row">
+                <button type="button" class="btn btn--danger" id="clear-pad-button" disabled>Clear pad</button>
+                <button type="button" class="btn btn--danger" id="reset-kit-button">Reset kit</button>
+              </div>
+            </div>
           </div>
           <div class="drawer__panel" data-panel="mix" hidden>
-            <p>Mixer disponibile in un prossimo step.</p>
+            <p class="drawer__hint">Tocca un pad per selezionarlo, poi regola volume e intonazione.</p>
+            <div class="drawer__pad-target" id="mix-pad-target">Pad 01</div>
+            <div class="drawer__sliders drawer__sliders--stacked">
+              <label class="drawer__slider drawer__slider--wide">Vol<input type="range" id="mix-volume" min="0" max="1" step="0.01" /></label>
+              <label class="drawer__slider drawer__slider--wide">Pitch<input type="range" id="mix-pitch" min="-12" max="12" step="1" /></label>
+            </div>
           </div>
           <div class="drawer__panel" data-panel="fx" hidden>
             <p>Effetti disponibili in un prossimo step.</p>

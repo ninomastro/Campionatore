@@ -1,18 +1,38 @@
-import { createMicAnalyser, decodeBlob, resumeAudioContext, triggerSample } from '../audio/engine.ts';
+import { createMicAnalyser, decodeBlob, resumeAudioContext } from '../audio/engine.ts';
 import { requestMicStream, startRecording, type ActiveRecording } from '../audio/recorder.ts';
-import { assignPadSample, saveSample } from '../storage/db.ts';
+import {
+  assignPadSample,
+  clearAllPadAssignments,
+  clearAllPadSettings,
+  clearAllSamples,
+  clearPadAssignment,
+  saveSample,
+  type PadSettingsRecord,
+  type PlaybackMode,
+} from '../storage/db.ts';
 
 export interface EditPanelOptions {
   pads: HTMLButtonElement[];
   statusIndicator: HTMLElement;
-  onSampleReady: (padIndex: number, buffer: AudioBuffer) => void;
   getBuffer: (padIndex: number) => AudioBuffer | undefined;
+  getSettings: (padIndex: number) => PadSettingsRecord;
+  updateSettings: (padIndex: number, patch: Partial<Omit<PadSettingsRecord, 'padIndex'>>) => void;
+  onSampleReady: (padIndex: number, buffer: AudioBuffer) => void;
+  onPreview: (padIndex: number) => void;
+  onCleared: (padIndex: number) => void;
+  onKitReset: () => void;
 }
 
 export interface EditPanel {
   selectPad(index: number): void;
   setSampleName(padIndex: number, name: string): void;
+  refresh(): void;
 }
+
+const MODE_CYCLE: PlaybackMode[] = ['oneshot', 'gate', 'loop'];
+const MODE_LABELS: Record<PlaybackMode, string> = { oneshot: 'One', gate: 'Gate', loop: 'Loop' };
+const CHOKE_CYCLE: Array<number | null> = [null, 1, 2, 3, 4];
+const CHOKE_LABELS: Record<string, string> = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
 
 function describeMicError(error: unknown): string {
   if (error instanceof DOMException) {
@@ -34,7 +54,9 @@ function describeMicError(error: unknown): string {
 }
 
 export function createEditPanel(root: HTMLElement, options: EditPanelOptions): EditPanel {
-  const { pads, statusIndicator, onSampleReady, getBuffer } = options;
+  const { pads, statusIndicator, getBuffer, getSettings, updateSettings, onSampleReady, onPreview, onCleared, onKitReset } =
+    options;
+
   const padTarget = root.querySelector<HTMLElement>('#edit-pad-target')!;
   const sampleNameLabel = root.querySelector<HTMLElement>('#edit-sample-name')!;
   const loadButton = root.querySelector<HTMLButtonElement>('#load-button')!;
@@ -44,6 +66,17 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
   const statusLabel = root.querySelector<HTMLElement>('#edit-status')!;
   const meter = root.querySelector<HTMLElement>('#edit-meter')!;
   const meterFill = root.querySelector<HTMLElement>('#edit-meter-fill')!;
+  const modeButton = root.querySelector<HTMLButtonElement>('#mode-button')!;
+  const chokeButton = root.querySelector<HTMLButtonElement>('#choke-button')!;
+  const adsrAttack = root.querySelector<HTMLInputElement>('#adsr-attack')!;
+  const adsrDecay = root.querySelector<HTMLInputElement>('#adsr-decay')!;
+  const adsrSustain = root.querySelector<HTMLInputElement>('#adsr-sustain')!;
+  const adsrRelease = root.querySelector<HTMLInputElement>('#adsr-release')!;
+  const clearPadButton = root.querySelector<HTMLButtonElement>('#clear-pad-button')!;
+  const resetKitButton = root.querySelector<HTMLButtonElement>('#reset-kit-button')!;
+  const mixPadTarget = root.querySelector<HTMLElement>('#mix-pad-target')!;
+  const mixVolume = root.querySelector<HTMLInputElement>('#mix-volume')!;
+  const mixPitch = root.querySelector<HTMLInputElement>('#mix-pitch')!;
 
   const padNames = new Map<number, string>();
   let selectedPad = 0;
@@ -54,9 +87,24 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
     pads.forEach((pad, index) => {
       pad.dataset.selected = String(index === selectedPad);
     });
-    padTarget.textContent = `Pad ${String(selectedPad + 1).padStart(2, '0')}`;
+    const label = `Pad ${String(selectedPad + 1).padStart(2, '0')}`;
+    padTarget.textContent = label;
+    mixPadTarget.textContent = label;
     sampleNameLabel.textContent = padNames.get(selectedPad) ?? 'Vuoto';
-    previewButton.disabled = !getBuffer(selectedPad);
+
+    const hasBuffer = !!getBuffer(selectedPad);
+    previewButton.disabled = !hasBuffer;
+    clearPadButton.disabled = !hasBuffer;
+
+    const settings = getSettings(selectedPad);
+    modeButton.textContent = `Mode: ${MODE_LABELS[settings.mode]}`;
+    chokeButton.textContent = `Choke: ${settings.chokeGroup === null ? 'Off' : CHOKE_LABELS[String(settings.chokeGroup)]}`;
+    adsrAttack.value = String(settings.adsr.attack);
+    adsrDecay.value = String(settings.adsr.decay);
+    adsrSustain.value = String(settings.adsr.sustain);
+    adsrRelease.value = String(settings.adsr.release);
+    mixVolume.value = String(settings.volume);
+    mixPitch.value = String(settings.pitch);
   }
 
   function setStatus(message: string, tone: 'error' | 'info' | 'idle' = 'idle') {
@@ -116,10 +164,81 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
   });
 
   previewButton.addEventListener('click', () => {
-    const buffer = getBuffer(selectedPad);
-    if (!buffer) return;
+    if (!getBuffer(selectedPad)) return;
     resumeAudioContext();
-    triggerSample(buffer);
+    onPreview(selectedPad);
+  });
+
+  modeButton.addEventListener('click', () => {
+    const current = getSettings(selectedPad).mode;
+    const next = MODE_CYCLE[(MODE_CYCLE.indexOf(current) + 1) % MODE_CYCLE.length];
+    updateSettings(selectedPad, { mode: next });
+    render();
+  });
+
+  chokeButton.addEventListener('click', () => {
+    const current = getSettings(selectedPad).chokeGroup;
+    const next = CHOKE_CYCLE[(CHOKE_CYCLE.indexOf(current) + 1) % CHOKE_CYCLE.length];
+    updateSettings(selectedPad, { chokeGroup: next });
+    render();
+  });
+
+  adsrAttack.addEventListener('input', () => {
+    updateSettings(selectedPad, { adsr: { ...getSettings(selectedPad).adsr, attack: Number(adsrAttack.value) } });
+  });
+  adsrDecay.addEventListener('input', () => {
+    updateSettings(selectedPad, { adsr: { ...getSettings(selectedPad).adsr, decay: Number(adsrDecay.value) } });
+  });
+  adsrSustain.addEventListener('input', () => {
+    updateSettings(selectedPad, { adsr: { ...getSettings(selectedPad).adsr, sustain: Number(adsrSustain.value) } });
+  });
+  adsrRelease.addEventListener('input', () => {
+    updateSettings(selectedPad, { adsr: { ...getSettings(selectedPad).adsr, release: Number(adsrRelease.value) } });
+  });
+
+  mixVolume.addEventListener('input', () => {
+    updateSettings(selectedPad, { volume: Number(mixVolume.value) });
+  });
+  mixPitch.addEventListener('input', () => {
+    updateSettings(selectedPad, { pitch: Number(mixPitch.value) });
+  });
+
+  clearPadButton.addEventListener('click', () => {
+    if (!getBuffer(selectedPad)) return;
+    const label = String(selectedPad + 1).padStart(2, '0');
+    const confirmed = window.confirm(
+      `Svuotare il Pad ${label}? Il campione resta disponibile se assegnato ad altri pad.`
+    );
+    if (!confirmed) return;
+    clearPadAssignment(selectedPad)
+      .then(() => {
+        padNames.delete(selectedPad);
+        onCleared(selectedPad);
+        render();
+        setStatus(`Pad ${label} svuotato.`, 'info');
+      })
+      .catch((error) => {
+        console.error('Impossibile svuotare il pad', error);
+        setStatus('Impossibile svuotare il pad.', 'error');
+      });
+  });
+
+  resetKitButton.addEventListener('click', () => {
+    const confirmed = window.confirm(
+      'Reset completo del kit: elimina TUTTI i campioni e le impostazioni di tutti i pad. Azione irreversibile. Continuare?'
+    );
+    if (!confirmed) return;
+    Promise.all([clearAllPadAssignments(), clearAllSamples(), clearAllPadSettings()])
+      .then(() => {
+        padNames.clear();
+        onKitReset();
+        render();
+        setStatus('Kit resettato.', 'info');
+      })
+      .catch((error) => {
+        console.error('Impossibile resettare il kit', error);
+        setStatus('Impossibile resettare il kit.', 'error');
+      });
   });
 
   recordButton.addEventListener('click', () => {
@@ -175,8 +294,12 @@ export function createEditPanel(root: HTMLElement, options: EditPanelOptions): E
       render();
     },
     setSampleName(padIndex: number, name: string) {
-      padNames.set(padIndex, name);
+      if (name) padNames.set(padIndex, name);
+      else padNames.delete(padIndex);
       if (padIndex === selectedPad) render();
+    },
+    refresh() {
+      render();
     },
   };
 }
