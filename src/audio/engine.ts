@@ -15,6 +15,27 @@ export function resumeAudioContext(): void {
   }
 }
 
+let unlocked = false;
+
+/**
+ * Safari iOS a volte ignora resume() da solo: serve far passare audio reale nello
+ * stesso gesto per sbloccare davvero l'uscita. Va chiamata una sola volta, al primo
+ * tocco sulla pagina (qualsiasi tocco, non necessariamente su un pad).
+ */
+export function unlockAudioContext(): void {
+  if (unlocked) return;
+  unlocked = true;
+  const ctx = getAudioContext();
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
+  const silence = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const source = ctx.createBufferSource();
+  source.buffer = silence;
+  source.connect(ctx.destination);
+  source.start(0);
+}
+
 export function audioNow(): number {
   return getAudioContext().currentTime;
 }

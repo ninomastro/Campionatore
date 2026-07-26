@@ -16,6 +16,7 @@ import {
   playVoice,
   resumeAudioContext,
   reverseBuffer,
+  unlockAudioContext,
   type Voice,
 } from './audio/engine.ts';
 import {
@@ -26,8 +27,14 @@ import {
   type PadSettingsRecord,
 } from './storage/db.ts';
 
-// Abilita il pseudo-stato :active al tocco su iOS Safari (altrimenti resta disattivato).
+// Il listener touchstart deve restare attivo per sempre: è quello che abilita il
+// pseudo-stato :active su iOS Safari (serve ad ogni tocco, non solo al primo).
 document.addEventListener('touchstart', () => {}, { passive: true });
+
+// Sblocco separato, una tantum: Safari iOS a volte ignora il semplice resume() se
+// non passa audio reale nello stesso gesto del primo tocco sulla pagina.
+document.addEventListener('touchstart', unlockAudioContext, { passive: true, once: true });
+document.addEventListener('pointerdown', unlockAudioContext, { once: true });
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const padGrid = app.querySelector<HTMLElement>('#pad-grid')!;
